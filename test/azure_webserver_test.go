@@ -10,7 +10,7 @@ import (
 
 // You normally want to run this under a separate "Testing" subscription
 // For lab purposes you will use your assigned subscription under the Cloud Dev/Ops program tenant
-var subscriptionID string = "<your-azure-subscription-id"
+var subscriptionID string = "f131ab3d-ecbf-4ce4-b2c2-c937dc44a331"
 
 func TestAzureLinuxVMCreation(t *testing.T) {
 	terraformOptions := &terraform.Options{
@@ -18,7 +18,7 @@ func TestAzureLinuxVMCreation(t *testing.T) {
 		TerraformDir: "../",
 		// Override the default terraform variables
 		Vars: map[string]interface{}{
-			"labelPrefix": "<your-college-id>",
+			"labelPrefix": "sing1883",
 		},
 	}
 
@@ -32,5 +32,46 @@ func TestAzureLinuxVMCreation(t *testing.T) {
 	resourceGroupName := terraform.Output(t, terraformOptions, "resource_group_name")
 
 	// Confirm VM exists
+	assert.True(t, azure.VirtualMachineExists(t, vmName, resourceGroupName, subscriptionID))
+}
+
+func TestNICExistsAndAttached(t *testing.T) {
+	terraformOptions := &terraform.Options{
+		TerraformDir: "../",
+		Vars: map[string]interface{}{
+			"labelPrefix": "sing1883",
+		},
+	}
+
+	terraform.InitAndApply(t, terraformOptions)
+	defer terraform.Destroy(t, terraformOptions)
+
+	resourceGroupName := terraform.Output(t, terraformOptions, "resource_group_name")
+	nicName := terraform.Output(t, terraformOptions, "nic_name")
+
+	nic, err := azure.GetNetworkInterfaceE(nicName, resourceGroupName, subscriptionID)
+	assert.NoError(t, err)
+	assert.NotNil(t, nic)
+
+	// Check if NIC is attached to a VM
+	if nic.VirtualMachine == nil || nic.VirtualMachine.ID == nil {
+		t.Fatalf("NIC %s is not attached to any VM", nicName)
+	}
+}
+
+func TestVMUbuntuVersion(t *testing.T) {
+	terraformOptions := &terraform.Options{
+		TerraformDir: "../",
+		Vars: map[string]interface{}{
+			"labelPrefix": "sing1883",
+		},
+	}
+
+	terraform.InitAndApply(t, terraformOptions)
+	defer terraform.Destroy(t, terraformOptions)
+
+	resourceGroupName := terraform.Output(t, terraformOptions, "resource_group_name")
+	vmName := terraform.Output(t, terraformOptions, "vm_name")
+
 	assert.True(t, azure.VirtualMachineExists(t, vmName, resourceGroupName, subscriptionID))
 }
